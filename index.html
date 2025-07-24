@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Krish's Budget Tracker</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="container">
+    <h1>📊 Krish's Budget Tracker</h1>
+    <div class="date" id="dateDisplay"></div>
+    
+    <div class="section">
+      <label>Total Monthly Allowance:</label>
+      <input type="number" id="totalAllowance" placeholder="₹" />
+      <label>Cash: <input type="number" id="cashInput" placeholder="₹" /></label>
+      <label>Bank: <input type="number" id="bankInput" placeholder="₹" /></label>
+      <button onclick="setAllowance()">Set Allowance</button>
+    </div>
+
+    <div class="section">
+      <label>Add Expense:</label>
+      <input type="text" id="expenseName" placeholder="What did you buy?" />
+      <input type="number" id="expenseAmount" placeholder="₹" />
+      <select id="category">
+        <option value="Food">Food</option>
+        <option value="Travel">Travel</option>
+        <option value="Groceries">Groceries</option>
+        <option value="Rent">Rent</option>
+        <option value="Maid">Maid</option>
+        <option value="Electric Bill">Electric Bill</option>
+        <option value="Others">Others</option>
+      </select>
+      <select id="paymentMode">
+        <option value="Cash">Cash</option>
+        <option value="Bank">Bank</option>
+      </select>
+      <button onclick="addExpense()">Add</button>
+    </div>
+
+    <div class="section">
+      <label>Add Friend Payback:</label>
+      <input type="text" id="friendName" placeholder="From whom?" />
+      <input type="number" id="friendAmount" placeholder="₹" />
+      <select id="friendMode">
+        <option value="Cash">Cash</option>
+        <option value="Bank">Bank</option>
+      </select>
+      <button onclick="addFriendPayback()">Add</button>
+    </div>
+
+    <div class="section">
+      <label>Transfer Money Between Wallets:</label>
+      <input type="number" id="transferAmount" placeholder="₹" />
+      <select id="transferDirection">
+        <option value="cashToBank">Cash ➜ Bank</option>
+        <option value="bankToCash">Bank ➜ Cash</option>
+      </select>
+      <button onclick="transferMoney()">Transfer</button>
+    </div>
+
+    <div class="balance">
+      <p><span class="green">Total Left:</span> ₹<span id="balanceLeft">0</span> / ₹<span id="totalSet">0</span></p>
+      <p><span class="green">Cash:</span> ₹<span id="cashBalance">0</span> | <span class="green">Bank:</span> ₹<span id="bankBalance">0</span></p>
+      <p><span class="red">Total Spent:</span> ₹<span id="totalSpent">0</span></p>
+    </div>
+
+    <canvas id="chart" height="200"></canvas>
+
+    <div class="section">
+      <button onclick="downloadPDF()">📥 Download PDF</button>
+    </div>
+
+    <div class="section">
+      <h3>Expenses:</h3>
+      <ul id="expenseList"></ul>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
+
+
+body {
+  font-family: 'Arial', sans-serif;
+  background: #f8f9fa;
+  padding: 10px;
+  margin: 0;
+}
+
+.container {
+  max-width: 500px;
+  margin: auto;
+  background: white;
+  padding: 15px;
+  border-radius: 10px;
+  box-shadow: 0 0 12px rgba(0, 0, 0, 0.1);
+}
+
+h1 {
+  text-align: center;
+  color: #333;
+}
+
+.section {
+  margin: 15px 0;
+}
+
+input, select, button {
+  padding: 10px;
+  margin: 5px 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+button {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+button:hover {
+  background-color: #0056b3;
+}
+
+.green {
+  color: green;
+}
+
+.red {
+  color: red;
+}
+
+#expenseList {
+  list-style: none;
+  padding: 0;
+}
+
+#expenseList li {
+  padding: 5px 0;
+  border-bottom: 1px solid #ccc;
+}
+
+.date {
+  text-align: right;
+  font-size: 0.9em;
+  color: #555;
+}
+
+
+
+let totalAllowance = 0;
+let remaining = 0;
+let cash = 0;
+let bank = 0;
+let spent = 0;
+let categories = {};
+
+document.getElementById('dateDisplay').textContent = new Date().toDateString();
+
+function setAllowance() {
+  totalAllowance = Number(document.getElementById('totalAllowance').value);
+  cash = Number(document.getElementById('cashInput').value);
+  bank = Number(document.getElementById('bankInput').value);
+  remaining = cash + bank;
+  updateUI();
+}
+
+function addExpense() {
+  const name = document.getElementById('expenseName').value;
+  const amount = Number(document.getElementById('expenseAmount').value);
+  const category = document.getElementById('category').value;
+  const mode = document.getElementById('paymentMode').value;
+
+  if (mode === "Cash") cash -= amount;
+  else bank -= amount;
+
+  spent += amount;
+  remaining -= amount;
+  categories[category] = (categories[category] || 0) + amount;
+
+  document.getElementById('expenseList').innerHTML += `<li><span class="red">-₹${amount}</span> on ${name} [${category}] via ${mode}</li>`;
+  updateUI();
+}
+
+function addFriendPayback() {
+  const amount = Number(document.getElementById('friendAmount').value);
+  const mode = document.getElementById('friendMode').value;
+
+  if (mode === "Cash") cash += amount;
+  else bank += amount;
+
+  remaining += amount;
+
+  document.getElementById('expenseList').innerHTML += `<li><span class="green">+₹${amount}</span> from friend via ${mode}</li>`;
+  updateUI();
+}
+
+function transferMoney() {
+  const amount = Number(document.getElementById('transferAmount').value);
+  const direction = document.getElementById('transferDirection').value;
+
+  if (direction === "cashToBank" && cash >= amount) {
+    cash -= amount;
+    bank += amount;
+  } else if (direction === "bankToCash" && bank >= amount) {
+    bank -= amount;
+    cash += amount;
+  }
+
+  updateUI();
+}
+
+function updateUI() {
+  document.getElementById('balanceLeft').textContent = remaining;
+  document.getElementById('cashBalance').textContent = cash;
+  document.getElementById('bankBalance').textContent = bank;
+  document.getElementById('totalSet').textContent = totalAllowance;
+  document.getElementById('totalSpent').textContent = spent;
+
+  drawChart();
+}
+
+function drawChart() {
+  const ctx = document.getElementById('chart').getContext('2d');
+  if (window.myChart) window.myChart.destroy();
+  window.myChart = new Chart(ctx, {
+    type: 'pie',
+    data: {
+      labels: Object.keys(categories),
+      datasets: [{
+        data: Object.values(categories),
+        backgroundColor: ['#ff6384', '#36a2eb', '#ffce56', '#b266ff', '#00cc99', '#ff9966', '#c2c2f0']
+      }]
+    },
+    options: {
+      responsive: true
+    }
+  });
+}
+
+function downloadPDF() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+
+  doc.text("Krish's Balance Sheet", 10, 10);
+  doc.text(`Total Allowance: ₹${totalAllowance}`, 10, 20);
+  doc.text(`Total Spent: ₹${spent}`, 10, 30);
+  doc.text(`Remaining: ₹${remaining}`, 10, 40);
+  doc.text(`Cash: ₹${cash} | Bank: ₹${bank}`, 10, 50);
+  doc.save(`Krish_Balance_Sheet_${new Date().toLocaleDateString()}.pdf`);
+}
